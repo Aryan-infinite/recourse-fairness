@@ -1,0 +1,7 @@
+dataset,method,attr_weight,margin_priv,margin_unpriv,margin_sd_priv,margin_sd_unpriv,cost_priv,cost_unpriv
+Adult,Baseline,0.119,-0.448,-1.214,1.317,0.977,0.895,1.386
+Adult,Reweighing,-0.088,-0.56,-0.887,1.313,0.978,0.949,1.132
+Adult,Fair LR,-0.355,-0.836,-0.868,1.426,0.911,1.294,1.087
+COMPAS,Baseline,0.004,0.283,0.023,0.908,0.912,0.563,0.599
+COMPAS,Reweighing,-0.093,0.145,0.091,0.905,0.909,0.541,0.607
+COMPAS,Fair LR,-0.05,0.184,0.063,0.911,0.847,0.543,0.555
