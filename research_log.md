@@ -5,9 +5,75 @@ Newest entry at the top. Each entry: what happened, what was decided, what's sti
 
 ---
 
+## Entry 8 - Diagnostics before the Discussion: shared denied population, margin-gap fit, denied-distance quantiles
+
+**What ran.** One new cell appended after the multi-split and penalty-sweep cells of the Colab notebook (208 s). Adult only, primary setup (sex is a model input), the same 30 splits and λ = 5 as Entry 7. No existing result changed: the four original CSVs were hashed before and after the run and are unchanged. New outputs are in `diagnostics/` (list at the end). Brackets are min-max over the 30 splits in A and B2 (the splits overlap, so these are ranges, not confidence intervals) and 95% bootstrap intervals in B1; Entry 7's brackets are middle-95% ranges.
+
+**Checks.**
+- 160 refits (90 primary: 3 models x 30 splits; 70 sweep: 7 penalty strengths x 10 splits) reproduce the rows of the original CSVs: counts exact, floats within 1e-4.
+- Seed-42 recourse distances equal the output of the notebook's own `recourse_costs()` for all three models.
+- 0 non-converged fits.
+- An independent re-run in a separate environment (numpy 2.5.4, scikit-learn 1.9.1, scipy 1.18.1) printed identical output line by line, apart from timing and the file path.
+
+**A. People denied by both Reweighing and the covariance-penalized LR** (mean over 30 splits [min, max]; r > 0: unprivileged group farther from the boundary; each model's own distance is used).
+
+| | Reweighing | Covariance-penalized LR |
+|---|---|---|
+| r, own denied people (existing result) | 0.205 [0.181, 0.246] | -0.083 [-0.112, -0.050] |
+| r, shared denied people (new) | 0.205 [0.180, 0.246] | -0.082 [-0.113, -0.050] |
+| Denied by this model only, privileged / unprivileged | 68 / 26 | 72 / 48 |
+| Mean distance on the shared set, privileged / unprivileged | 0.962 / 1.143 | 1.310 / 1.106 |
+
+Shared set: 4,710 privileged [4,629, 4,780] and 2,528 unprivileged [2,458, 2,608] people per split. It holds 98.7% [98.5, 99.0] of Reweighing's denied people and 98.4% [98.0, 98.7] of the penalty's. Reweighing minus penalty: 0.288 [0.274, 0.301] on own sets, 0.287 [0.274, 0.299] on the shared set, positive on 30/30 splits. On the shared set r > 0 for Reweighing and r < 0 for the penalty on 30/30 splits, and Reweighing's Mann-Whitney p < .05 on 30/30.
+
+Reading: the between-method difference does not come from which people are denied. With about 98.5% overlap the two rows could not have differed much, so this rules out the composition explanation; it is not evidence about mechanism.
+
+**B1. Mean-margin gap vs mean recourse-cost gap** (gap = privileged minus unprivileged; margin gap over all test people, cost gap over denied people; one observation = one model fit on one split; OLS; the bootstrap resamples whole splits, B = 2000).
+
+| Observations | n | cost gap = | R² | Margin gap at cost parity [95% bootstrap] |
+|---|---|---|---|---|
+| Penalty sweep, 7 strengths x 10 splits | 70 | 0.232 - 0.909 x margin gap | 0.998 | 0.255 [0.246, 0.264] |
+| Sweep, strengths >= 1 only | 60 | 0.227 - 0.787 x margin gap | 0.940 | 0.289 [0.272, 0.306] |
+| Primary, 3 models x 30 splits | 90 | 0.192 - 0.928 x margin gap | 0.965 | 0.207 [0.201, 0.213] |
+
+Limits on what the association supports:
+- Both quantities come from the same fitted score distribution, so the relation is partly mechanical. It is an association, not a test of mechanism or cause.
+- There are only 7 (sweep) or 3 (primary) distinct model conditions; the rows within a condition are overlapping splits of the same data, so n = 70 or 90 overstates the independent information. Dropping the unpenalized fits (strengths >= 1 only) changes the slope from -0.909 to -0.787 and R² from 0.998 to 0.940.
+- The cost-parity point depends on which observations are used (0.207, 0.255, 0.289) and the intervals do not overlap, so no single value should be quoted. The bootstrap covers split-to-split variability only, not the choice of model form.
+- Adult only, linear models, sex only.
+
+**B2. Distance to the boundary among denied people** (quantiles within each split, then mean over 30 splits). Gap = privileged minus unprivileged, > 0: privileged farther; in parentheses, the number of splits (of 30) with gap > 0.
+
+| | Baseline | Reweighing | Covariance-penalized LR |
+|---|---|---|---|
+| mean | -0.491 (0) | -0.183 (0) | +0.206 (30) |
+| q10 | -0.391 (0) | -0.213 (0) | -0.126 (0) |
+| q25 | -0.604 (0) | -0.306 (0) | -0.160 (0) |
+| q50 | -0.631 (0) | -0.310 (0) | +0.083 (30) |
+| q75 | -0.478 (0) | -0.114 (0) | +0.528 (30) |
+| q90 | -0.341 (0) | +0.049 (28) | +0.725 (30) |
+| q95 | -0.309 (0) | +0.094 (30) | +0.825 (30) |
+| q99 | -0.303 (0) | +0.101 (25) | +0.951 (30) |
+
+Reading (descriptive only): the baseline gap is negative at every quantile. After the penalty, privileged denied people are closer to the boundary in the bottom quartile and farther from the median up, with the largest differences in the upper tail; the two halves have opposite signs, which is consistent with a small |r| next to a mean gap of +0.206. Reweighing's gap is negative through q75 and small at the top; its q99 sign is not stable (25/30) and rests on about 25 unprivileged people per split.
+
+**For the write-up.**
+- The penalty's mean cost gap is +0.206 (0.2063 unrounded); a draft figure of +0.207 came from subtracting rounded table entries.
+- "Small overshoot" holds for the rank statistic (r = -0.083) but not for the upper tail: privileged denied people are 0.725 to 0.951 farther at q90 to q99, against 0.303 to 0.341 in the other direction at baseline.
+- The shared-population check and the mechanism check, listed as future work in the draft, are done; report them in the text.
+
+**Files** (`diagnostics/`): `diag_common_denied_by_split.csv`, `diag_common_denied_summary.csv`, `diag_mechanism_observations.csv`, `diag_mechanism_fit.csv`, `diag_denied_quantiles_by_split.csv`, `diag_denied_quantiles_summary.csv`.
+
+**Still open.**
+- Write the Discussion with these results.
+- Add Friedler et al. (arXiv 1802.04422) and Karimi et al. (arXiv 2002.06278) to the references; confirm venues.
+- Rebuild the paper tables from the `diag_*.csv` files.
+
+---
+
 ## Entry 7 - Colab results: 30 splits, protected-column run, penalty sweep
 
-**What ran.** Cells 1 and 2 of the notebook in the user's Colab. Outputs pushed in commit f3d099e: `multiseed_results.csv` (360 fits), `multiseed_summary.csv`, `mechanism_table.csv`, `lambda_sweep.csv` (140 fits), `figure1_multiseed.png`, `figure3_lambda_sweep.png`, `requirements.txt`. Colab versions: aif360 0.6.1, pandas 2.2.3, numpy 2.1.3, scikit-learn 1.6.1, scipy 1.16.3, matplotlib 3.10.0. All 500 fits converged. I read the numbers from the pushed CSVs (the repo is public), not from the cells' printed output, which I have not seen.
+**What ran.** Cells 1 and 2 of the notebook in Colab. Outputs pushed in commit f3d099e: `multiseed_results.csv` (360 fits), `multiseed_summary.csv`, `mechanism_table.csv`, `lambda_sweep.csv` (140 fits), `figure1_multiseed.png`, `figure3_lambda_sweep.png`, `requirements.txt`. Colab versions: aif360 0.6.1, pandas 2.2.3, numpy 2.1.3, scikit-learn 1.6.1, scipy 1.16.3, matplotlib 3.10.0. All 500 fits converged. Numbers were read from the pushed CSVs (the repo is public), not from the cells' printed output.
 
 **Checks on the run.**
 - Seed-42 primary rows reproduce the single-split table of Entries 3-5 (largest difference 5e-5 in SPD, AOD or r).
@@ -68,7 +134,7 @@ Newest entry at the top. Each entry: what happened, what was decided, what's sti
 3. The penalty also acts through other features: with the column removed it still brings r to 0.040.
 4. After the penalty the groups' mean margins are nearly equal (-0.836 vs -0.868) but their spreads differ (1.426 vs 0.911), and denied men are farther from the boundary than denied women (1.294 vs 1.087). Hypothesis, not tested: the sign of r among the denied is set by each group's lower tail, which a penalty on the mean score does not control.
 5. Mean r on Adult is negative for every lambda >= 1 (the smallest nonzero value tested; where it crosses zero between 0 and 1 is not known), so the sign change is not an artifact of lambda = 5. Its size depends on lambda (-0.028 at 1, -0.099 at 50).
-6. COMPAS: mean r is 0.083, 0.059, 0.059; individually significant on 7, 5, 2 of 30 splits. At this sample size 80% power needs |r| about 0.17, so these results can neither confirm nor exclude gaps of baseline size. The seed-42 split I used before had baseline r = 0.012, lower than 26 of the 30 splits.
+6. COMPAS: mean r is 0.083, 0.059, 0.059; individually significant on 7, 5, 2 of 30 splits. At this sample size 80% power needs |r| about 0.17, so these results can neither confirm nor exclude gaps of baseline size. The seed-42 split used earlier had baseline r = 0.012, lower than 26 of the 30 splits.
 
 **Claims withdrawn or changed.**
 - Entry 5, "overcorrection risk appears tied to the size of the original gap, not to the mitigation method": not supported. On Adult the method matters (item 2 vs 3), and COMPAS cannot test it (item 6). Withdrawn.
@@ -76,14 +142,14 @@ Newest entry at the top. Each entry: what happened, what was decided, what's sti
 - "Overshoot" and "overcorrection": r < 0 describes the sign of the gap. The penalty does not target r = 0, so "reverses the sign of the gap" is the accurate wording.
 - Entry 3, "COMPAS: no recourse gap at baseline (p = 0.854)": that was one split, among the four with the lowest r. Replace with the power-aware statement in item 6.
 
-**Edits to the paper draft.** `Recourse_Fairness_Sample_Paper_Template.docx` rebuilt from the CSVs with no hand-typed numbers: Tables 1-4 now show 30-split means and middle-95% ranges; new Table 5 (column removed) and Table 6 (mechanism); Figures 1 and 2 embedded; new Sections 3.7, 4.4, 4.5; Limitations rewritten; Related Work rewritten around the papers of Entry 6 finding 7. Three sentences from the old draft were removed because I could not verify them: that Ustun et al. showed recourse differing by gender (their abstract does not say it), that to our knowledge COMPAS recourse had not been examined, and that COMPAS accuracy was similar across groups (Angwin et al. sentence). Interpretation, Discussion, Conclusion and the Abstract's finding are left as gray prompts for the author.
+**Edits to the paper draft.** `Recourse_Fairness_Sample_Paper_Template.docx` rebuilt from the CSVs with no hand-typed numbers: Tables 1-4 now show 30-split means and middle-95% ranges; new Table 5 (column removed) and Table 6 (mechanism); Figures 1 and 2 embedded; new Sections 3.7, 4.4, 4.5; Limitations rewritten; Related Work rewritten around the papers of Entry 6 finding 7. Three sentences from the old draft were removed because they could not be verified: that Ustun et al. showed recourse differing by gender (their abstract does not say it), that to our knowledge COMPAS recourse had not been examined, and that COMPAS accuracy was similar across groups (Angwin et al. sentence). Interpretation, Discussion, Conclusion and the Abstract's finding are still gray prompts in the draft.
 
 **Citations checked on Oct 11** (title, authors, arXiv ID and abstract-level content read from ar5iv/arXiv pages): Sharma et al. 2010.06113; von Kügelgen et al. 2010.06529; Guldogan et al. 2210.06732; van Rosmalen et al. 2211.11512; Zafar et al. 1507.05259; Haldar et al. 2208.14175 (CIKM 2022 confirmed by a search result); Artelt & Hammer 2211.14858. Not verified: venues and years for von Kügelgen (AAAI 2022), Guldogan (ICLR 2023) and Zafar (AISTATS 2017) are from memory and need a check on the publisher pages; FaiR-N's Table 3 and the full texts of RAGUEL and von Kügelgen were not read; for Ustun et al. only the abstract was available.
 
 **Still open.**
-- Author reads FaiR-N (Table 3), RAGUEL and von Kügelgen, then fixes any Related Work sentence a full read contradicts.
+- Read FaiR-N (Table 3), RAGUEL and von Kügelgen in full, then fix any Related Work sentence a full read contradicts.
 - Systematic literature sweep (Google Scholar and Semantic Scholar, "cited by" on Gupta 2019 and von Kügelgen 2022); check whether FaiR-N or RAGUEL already evaluate Reweighing.
-- Author writes the interpretation paragraphs, Discussion, Conclusion and the Abstract's finding; the AI-assistance paragraph must describe what the author actually did.
+- Write the interpretation paragraphs, Discussion, Conclusion and the Abstract's finding; the AI-assistance paragraph must describe what was actually done.
 - Confirm reference venues; save the notebook copy to GitHub (File > Save a copy in GitHub) so the repo notebook contains the new cells; commit README, log, summary and paper draft once.
 - Post as a preprint (OSF Preprints; arXiv would need an endorsement) labelled not peer reviewed, only after the items above.
 
@@ -107,7 +173,7 @@ Reviewed every result so far against the Phase 7 rule (effect sizes and uncertai
 
 **7. Prior work (abstract-level check of the papers below plus about a dozen searches; not a systematic review). The novelty claim in the paper draft is wrong and has to change.** Checked against the arXiv texts:
 - Gupta et al. 2019: recourse = distance to the decision boundary; a regularizer that equalizes it across groups.
-- Sharma, Gee, Paydarfar & Ghosh (FaiR-N, arXiv 2010.06113): Definition 1 calls a classifier recourse-fair when the average distance to the boundary of people given a negative outcome is equal across groups, which is nearly our metric. Their abstract argues recourse disparity and error-rate fairness are related; they report a comparison of existing mitigation methods on a burden gap (Adult, German Credit, MEPS). Read their Table 3 myself before citing it; I only confirmed the definition and the abstract-level thesis.
+- Sharma, Gee, Paydarfar & Ghosh (FaiR-N, arXiv 2010.06113): Definition 1 calls a classifier recourse-fair when the average distance to the boundary of people given a negative outcome is equal across groups, which is nearly our metric. Their abstract argues recourse disparity and error-rate fairness are related; they report a comparison of existing mitigation methods on a burden gap (Adult, German Credit, MEPS). Table 3 has not been read; only the definition and the abstract-level thesis were confirmed, so read it before citing.
 - Haldar, Cunningham & Ferhatosmanoglu (RAGUEL, CIKM 2022): evaluates group-fairness post-processing methods (demographic parity, equalized-odds variants) on recourse fairness (German Credit, Default of Credit Card Clients) and reports they can worsen it. Reweighing is not evaluated there.
 - von Kügelgen et al. 2022: "fairness of recourse is complementary to fairness of prediction"; Adult case study.
 - Guldogan et al. 2023 (Equal Improvability): relates the notion to demographic parity in theory; German Credit and ACSIncome-CA.
