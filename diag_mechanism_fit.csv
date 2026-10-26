@@ -1,0 +1,4 @@
+observations,n,splits,intercept,slope,R2,rmse,intercept_lo,intercept_hi,slope_lo,slope_hi,R2_lo,R2_hi,parity_margin_gap,parity_lo,parity_hi
+"sweep, all 7 penalty strengths x 10 splits",70,10,0.2316,-0.9086,0.9977,0.0135,0.2239,0.2396,-0.9129,-0.9046,0.9965,0.9991,0.2548,0.2459,0.2638
+"sweep, penalty >= 1 only",60,10,0.2271,-0.7866,0.9398,0.0112,0.2206,0.2349,-0.8349,-0.7433,0.8932,0.9802,0.2887,0.2724,0.3058
+"primary, 3 methods x 30 splits",90,30,0.1918,-0.928,0.9652,0.0534,0.1869,0.1975,-0.9311,-0.9251,0.9631,0.9671,0.2067,0.2014,0.2129
